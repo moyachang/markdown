@@ -10,7 +10,7 @@
   
 ## 現況架構圖（修正版）  
   
-```  
+```text
 ┌────────────────────────────────────────────────────────────────┐  
 │                     客户端 (Clients)                            │  
 │                   Web / Mobile / API                           │  
@@ -66,7 +66,8 @@
     │ (Repository/Entity)   │ │ (DDD Structure)    │  
     └───────────┬───────────┘ └────────┬───────────┘                │                      │                ↓                      ↓    ┌───────────────────────┐ ┌────────────────────┐  
     │ PASE 參考系統 / RIM   │ │ UP4 Database       │  
-    └───────────────────────┘ └────────────────────┘```  
+    └───────────────────────┘ └────────────────────┘
+```  
   
 ---  
   
@@ -117,7 +118,8 @@ Spring Boot 內的路由
 ```  
 Spring 會掃描：  
   ├─ WFCIService/.../controller/LaleLayoutSettingController  │   @RequestMapping("/api/v1/layout-setting")  │  
-  └─ up/.../controller/LaleLayoutSettingController      @RequestMapping("/up/api/layout-setting")```  
+  └─ up/.../controller/LaleLayoutSettingController      @RequestMapping("/up/api/layout-setting")
+```  
   
 **結果**：  
 - `/api/v1/layout-setting` → 舊 controller  
