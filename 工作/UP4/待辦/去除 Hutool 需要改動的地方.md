@@ -43,3 +43,17 @@ Map<String, Object> map = mapper.readValue(json, Map.class);
 ---
 
 **建議：** 若專案已有 Spring Boot + Jackson，處理 JSON 完全夠用，不一定需要 Hutool。但如果習慣 Hutool 的簡潔 API，繼續用也完全合理。
+
+BeanUtil.beanToMap(ffw)
+OBJECT_MAPPER.convertValue(ffw, MAP_TYPE)
+
+```java
+private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+private static final TypeReference<Map<String, Object>> MAP_TYPE =
+        new TypeReference<Map<String, Object>>() {};
+```
+ 
+ ```java
+ // 將 form 物件轉成 Map（取代 new JSONObject(form)）
+        Map<String, Object> body = OBJECT_MAPPER.convertValue(form, MAP_TYPE);
+ ```
