@@ -553,3 +553,66 @@ git diff --no-index dependency-tree-boot-3.5.txt dependency-tree-boot-4.txt
 其中你們那套 `spring-remoting-2.0.5` 舊 jar 相容層是我最擔心的第三方／歷史依賴之一。它本來就不是 Boot 4 支援範圍，升級後即使編譯成功，也必須實際連舊 PASE Server 測試反序列化、stub lookup、dynamic proxy、RemoteInvocation 與 classloader 行為。
 
 整體而言，這次升級**未必像 Boot 2 → 3 的 `javax` → `jakarta` 那麼全面**，但 Jackson 3、Boot 模組拆分、Spring 7 與測試 API 的變動，仍足以構成一個正式升版專案，不應被當成單純版本調整。
+
+
+---
+
+這個錯誤是 Spring Boot 4 **模組化重整**造成的典型狀況——之前提醒過的「套件搬遷」這次真的踩到了。
+
+## 原因
+
+`org.springframework.boot.autoconfigure.domain` 這個 package 在 Spring Boot 3.x 裡放的是 `@EntityScan` 這個註解(完整路徑是 `org.springframework.boot.autoconfigure.domain.EntityScan`)。
+
+Spring Boot 4 把 auto-configure 相關類別依模組打散重整,`EntityScan` 這類 JPA 相關的自動組態,很可能已經搬到新的模組路徑底下(例如 `org.springframework.boot.jpa.autoconfigure.domain` 或類似的模組化命名空間)。
+
+## 請先確認
+
+1. `common` 模組裡是哪一個檔案 import 了 `org.springframework.boot.autoconfigure.domain.*`?通常會是:
+
+```java
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+```
+
+用在 `@EntityScan(basePackages = "...")` 這種標註 JPA Entity 掃描路徑的地方。
+
+2. 確認一下 `common` 模組的 `spring-boot-starter-data-jpa` 依賴有沒有正確被拉進來——因為 `common/pom.xml` 裡這筆依賴的版本目前是靠父 POM 決定的,如果 Boot 4 底下 JPA 相關的 starter/模組結構整個變了,可能連帶影響。找到確切答案了。
+
+## 原因確認
+
+在 Spring Boot 4,`@EntityScan` 這個註解已經**搬家**了:
+
+- **舊路徑(3.x)**:`org.springframework.boot.autoconfigure.domain.EntityScan`
+- **新路徑(4.x)**:`org.springframework.boot.persistence.autoconfigure.EntityScan`
+
+這正是我先前提醒過的「模組化重整」——JPA 相關的 auto-configuration 被拆到獨立的 `spring-boot-persistence-autoconfigure` 模組底下,不再放在通用的 `autoconfigure` package 裡。
+
+## 修正方式
+
+找到 `common` 模組裡有 import 這一行的檔案(通常在你的 `@SpringBootApplication` 主類別,或某個設定類別):
+
+```java
+// 舊寫法,要刪除
+import org.springframework.boot.autoconfigure.domain.EntityScan;
+```
+
+改成:
+
+```java
+// 新寫法
+import org.springframework.boot.persistence.autoconfigure.EntityScan;
+```
+
+**`@EntityScan(...)` 註解本身的用法完全不變**,只需要改 import 那一行,底下的 `basePackages = {...}` 等寫法都一樣。
+
+## 提醒:這類「純搬家」問題會陸續冒出來
+
+這是 Boot 4 模組化重整的典型模式——類別本身沒變,只是 package 位置換了。目前你已經遇到:
+
+- `EntityScan`:`autoconfigure.domain` → `persistence.autoconfigure`
+
+接下來你可能還會遇到類似的:
+
+- `@WebMvcTest` / `@AutoConfigureMockMvc`:從 `org.springframework.boot.test.autoconfigure.web.servlet` 搬到 `org.springframework.boot.webmvc.test.autoconfigure`(而且需要額外加 `spring-boot-starter-webmvc-test` 這個新的測試 starter)
+- `@MockBean` 已被移除,要改用 Spring Framework 7 的 `@MockitoBean`
+
+建議你在 IDE 裡全域搜尋 `org.springframework.boot.autoconfigure.` 這個字首,一次性檢查專案裡還有沒有其他用到舊路徑、之後會陸續中鏢的 import,會比一個個等編譯報錯再修更有效率。
